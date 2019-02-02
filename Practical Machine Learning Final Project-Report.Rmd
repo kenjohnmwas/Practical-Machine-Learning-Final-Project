@@ -1,0 +1,119 @@
+---
+title: "Practical Machine Learning Final Project-Report"
+author: "John Kennedy Mwangi"
+date: "February 2, 2019"
+output: html_document
+---
+#Loading the data from csv's and load required libraries
+
+```{r}
+traindat <- read.csv('./pml-training.csv', header=T)
+testdat <- read.csv('./pml-testing.csv', header=T)
+
+library(caret)
+library(rattle)
+
+```
+#Check the dimensions and the structure of the loaded data
+
+```{r}
+dim(traindat)
+str(traindat)
+dim(testdat)
+str(traindat)
+```
+# Remove the first five variables that have no apparent weight on the varibale "classe"
+```{r}
+traindat <- traindat[,-c(1,2,3,4,5)]
+testdat <- testdat[,-c(1,2,3,4,5)]
+```
+
+#Get rid of all columns with non zero variance based on the training data
+```{r}
+nonzerovariance <- nearZeroVar(traindat)
+traindat <- traindat[,-nonzerovariance]
+testdat <- testdat[,-nonzerovariance]
+```
+
+# Get rid of varibales and columns with NAs
+```{r}
+removeNA <- apply(traindat, 2, function(x) { sum(is.na(x)) } )
+traindat <- traindat[,which(removeNA ==0)]
+testdat <- testdat[,which(removeNA ==0)]
+```
+# Get rid of highly correlated variables
+```{r}
+HighCor <- findCorrelation(cor(traindat[, 1:dim(traindat)[2]-1]), cutoff=0.8)
+traindat <- traindat[,-HighCor]
+testdat <- testdat[,-HighCor]
+```
+# Use complete.case function to keep the data that has all field values
+```{r}
+traindat <- traindat[complete.cases(traindat),]
+testdat <- testdat[complete.cases(testdat),]
+dim(traindat)
+str(traindat)
+dim(testdat)
+str(testdat)
+
+```
+# Partition the training data into two datsets for training and testing the models
+```{r}
+set.seed(12345)
+trainPartition <- createDataPartition(traindat$classe, p = 0.7, list = FALSE)
+Traindata1  <- traindat[trainPartition, ]
+Traindata2 <- traindat[-trainPartition, ]
+
+```
+### Use Traindata1 to create models with Random Forest and Classification Trees
+```{r}
+library(randomForest)
+controlRandom <- trainControl(method="none", number=3, verboseIter=FALSE)
+
+RandomModel <- train(classe~., data=Traindata1,  method="rf", trControl=controlRandom, verbose=FALSE)
+
+```
+```{r}
+library(rpart)
+Classificationmodel <- train(classe~., data=Traindata1, method="rpart", trControl=controlRandom )
+```
+
+### Test the models on Traindata2
+```{r}
+library(randomForest)
+predictTrainRand <- predict(RandomModel, newdata=Traindata2)
+
+
+
+```
+```{r}
+library(rpart)
+
+predictTrainClass <- predict(Classificationmodel, newdata=Traindata2)
+```
+
+### Obtain confusionmatrices for the two models and compare
+```{r}
+library(randomForest)
+confMatRandom <- confusionMatrix(predictTrainRand, Traindata2$classe)
+confMatRandom
+
+
+
+
+```
+```{r}
+library(rpart)
+
+confMatClass <- confusionMatrix(predictTrainClass, Traindata2$classe)
+confMatClass 
+```
+
+#Test the random forest model on the initial test data 
+```{r}
+library(randomForest)
+predictTestData <- predict(RandomModel, newdata=testdat)
+predictTestData
+```
+
+
